@@ -17,7 +17,7 @@ _Major operating system upgrades are among the highest-risk changes an organizat
 
 * *Fleet drift* — hosts sit on different RHEL 9 minor versions (9.5, 9.6, 9.7), each needing different handling.
 * *Silent incompatibilities* — deprecated packages or unsupported configurations can turn an upgrade into an outage.
-* *Under-resourced systems* — a host without enough free memory can fail partway through, leaving it in a broken state.
+* *Under-resourced systems* — a host without enough RAM can fail partway through, leaving it in a broken state.
 * *Human error* — manual steps skipped or run out of order lead to systems that "upgraded" but don't actually work.
 
 *Value proposition:*
@@ -82,7 +82,7 @@ In a moment I'll open AAP and show you exactly how this is put together — and 
 **What they should notice (preview of the demo):**
 
 * Every upgrade is broken into *validated phases*, and each phase must pass before the next runs.
-* The *preflight* phase is the safety gate — it checks OS version, memory, and disk before anything destructive happens.
+* The *preflight* phase is the safety gate — it checks OS version, CPU (x86_64 + AVX2), total RAM, and disk before anything destructive happens.
 * Because the steps run in sequence, a failure early on *stops the destructive steps from ever running* against that host.
 * Compatible hosts on *different* RHEL 9 minor versions still upgrade cleanly, thanks to automatic version normalization.
 

@@ -20,7 +20,7 @@ _In Ansible Automation Platform, the upgrade is exposed as a *workflow template*
 
 | Step 1
 | `LEAPP 01: Preflight`
-| Validates system requirements (memory, disk, OS compatibility).
+| Validates system requirements (RHEL 9, x86_64 with AVX2, total RAM, disk space).
 
 | Step 2
 | `LEAPP 02: RHSM Registration`
@@ -93,8 +93,8 @@ _The demo runs against a small inventory of four RHEL nodes, deliberately config
 | ✓ Upgrades successfully
 
 | `node3`
-| RHEL 9, < 2 GB free memory
-| ✗ Fails at preflight (insufficient memory)
+| RHEL 9, < 2 GB total RAM (~1.5 GB)
+| ✗ Fails at preflight (insufficient total RAM)
 
 | `node4`
 | RHEL 8, ~4 GB RAM
@@ -113,7 +113,7 @@ _The demo runs against a small inventory of four RHEL nodes, deliberately config
 
 . Walk the customer through what makes each node different, setting up the outcomes they'll see later:
 * " `node1` and `node2` are our good candidates — but notice they're on *different* minor versions, 9.5 and 9.7. That's on purpose, so you can watch the role handle mixed versions automatically."
-* " `node3` is on RHEL 9 but starved for memory — under 2 GB free. `node4` isn't even on RHEL 9; it's still on RHEL 8, which can't go straight to RHEL 10 at all. Keep these two in mind — they're the reason we'll see the safety net kick in."
+* " `node3` is on RHEL 9 but under-provisioned — it has less than the 2 GB of total RAM the upgrade requires. `node4` isn't even on RHEL 9; it's still on RHEL 8, which can't go straight to RHEL 10 at all. Keep these two in mind — they're the reason we'll see the safety net kick in."
 
 **What they should notice:**
 
@@ -137,7 +137,7 @@ The role's work is organized into sequential phases. Each phase must succeed bef
 | Phase | What It Does
 
 | *Preflight*
-| Validates system requirements — supported OS version (RHEL 9), sufficient free memory (≥ 2 GB), and disk space. This is the safety gate that stops unsafe upgrades before any destructive change.
+| Validates system requirements before any change: the host is RHEL 9, on x86_64 with a CPU that supports AVX2 (a RHEL 10 requirement), has at least 2 GB of *total* RAM, and enough free disk (≥ 200 MB on `/boot`, ≥ 5 GB for `/var/lib/leapp`). It also migrates any legacy `ifcfg` network configuration to NetworkManager keyfile format. This is the safety gate that stops unsafe upgrades before any destructive change.
 
 | *Phase 1: Repositories*
 | Sets RHEL 9.6 as the intermediate target and prepares the package repositories. This normalizes any RHEL 9.x host to a common baseline.
@@ -161,7 +161,7 @@ The role's work is organized into sequential phases. Each phase must succeed bef
 
 **What I say:**
 
-"One last thing before we run it, so the results make sense. Inside that Upgrade Execution step, the role breaks the work into sequential phases, and each one has to succeed before the next runs. The very first is *preflight* — the safety gate. It checks the host is really on RHEL 9, has at least 2 GB free memory, and enough disk. If preflight fails, nothing destructive ever happens.
+"One last thing before we run it, so the results make sense. Inside that Upgrade Execution step, the role breaks the work into sequential phases, and each one has to succeed before the next runs. The very first is *preflight* — the safety gate. It checks the host is really on RHEL 9, on x86_64 with a CPU that supports AVX2, has at least 2 GB of total RAM, and enough free disk. If any of those checks fail, nothing destructive ever happens.
 
 Then it sets up repositories and normalizes the host to a common RHEL 9.6 baseline, updates and reboots, and runs the LEAPP analysis and the actual transformation to RHEL 10. Afterward it verifies everything — OS version, kernel, repositories, GPG keys, services — and cleans up after itself.
 
@@ -169,17 +169,52 @@ The key idea: LEAPP's own report is used as a *gatekeeper*. The role reads it an
 
 **What I do _(optional — for a technical audience)_:**
 
-. Open the role's source repository in a browser tab: https://gitlab.com/ansible-ssa/role-rhel10-upgrader[role-rhel10-upgrader on GitLab^]
+The snippets below are lifted straight from the role so you can show them inline, without leaving the demo to browse the repo. The full source is at https://gitlab.com/ansible-ssa/role-rhel10-upgrader[role-rhel10-upgrader on GitLab^] if someone wants to dig deeper.
 
-. Show the *preflight* tasks — the checks that gate the whole upgrade (supported OS version, free memory, disk space):
-* "This is the safety gate in code. It's just an Ansible task that asserts the host meets the requirements. If any assertion fails, the play stops here — and because the workflow runs sequentially, the destructive steps never fire."
+. Show the *preflight* safety gate — plain Ansible assertions that must all pass before anything else runs (`tasks/preflight.yml`, excerpt):
++
+[source,yaml]
+----
+- name: Verify system is RHEL 9
+  ansible.builtin.assert:
+    that: ansible_facts['distribution_major_version'] == "9"
+    fail_msg: "This role is intended for RHEL 9 systems only. Detected major version: {{ ansible_facts['distribution_major_version'] }}"
 
-. Show where the role *parses LEAPP's JSON report* and decides whether to proceed:
-* "And here's the gatekeeper. The role doesn't just run LEAPP and hope — it reads LEAPP's own report and makes a decision. That's the difference between automation that's fast and automation you can trust."
+- name: Verify system has enough total memory for the upgrade
+  ansible.builtin.assert:
+    that: ansible_facts['memtotal_mb'] >= 2048
+    fail_msg: "The system must have at least 2GB of total RAM for the upgrade. Detected: {{ ansible_facts['memtotal_mb'] }} MB"
+----
++
+* "This is the safety gate in code — just Ansible assertions. If any one fails, the play stops right here. And because the workflow runs sequentially, the destructive steps never fire. Notice these are the exact checks that will stop `node4` (not RHEL 9) and `node3` (not enough RAM) in a moment."
+
+. Show the *gatekeeper* — the role runs LEAPP's pre-upgrade analysis, keeps the report, and refuses to upgrade if it didn't pass (`tasks/upgrade.yml`, excerpt):
++
+[source,yaml]
+----
+- name: Running pre-upgrade checks with LEAPP
+  ansible.builtin.command: leapp preupgrade
+  register: preupgrade_result
+  changed_when: false
+  ignore_errors: true
+
+- name: Fetch pre-upgrade report
+  ansible.builtin.fetch:
+    src: /var/log/leapp/leapp-report.json
+    dest: ./leapp-report-{{ inventory_hostname }}.json
+    flat: yes
+
+- name: Fail if pre-upgrade checks did not pass
+  ansible.builtin.fail:
+    msg: "Pre-upgrade checks failed. Please review the report for details."
+  when: preupgrade_result.rc != 0
+----
++
+* "And here's the gatekeeper. The role doesn't just run LEAPP and hope — it runs the pre-upgrade analysis, saves the report for the record, and *only* proceeds to `leapp upgrade` if the analysis passed. That's the difference between automation that's fast and automation you can trust."
 
 [TIP]
 ====
-*Presenter tip:* Don't line-by-line the code. Open the repo, scroll to the preflight and report-parsing tasks, and let the customer *see* that the safety behavior is real, versioned, and reviewable — then move on. Two screens, thirty seconds.
+*Presenter tip:* Don't line-by-line the code. Show the two blocks, land the point that the safety behavior is real, versioned, and reviewable — then move on. Thirty seconds, tops.
 ====
 
 **What they should notice:**

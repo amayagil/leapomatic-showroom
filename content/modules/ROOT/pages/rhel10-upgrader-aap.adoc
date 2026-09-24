@@ -70,13 +70,13 @@ A: "It's a custom credential type defined for this scenario that maps the Red Ha
 
 === Know
 
-_This is the most important part of the demo. You'll launch the workflow against all four nodes and watch it *fail safely* on the two bad candidates — `node3` (insufficient memory) and `node4` (RHEL 8). The preflight gate catches them before any destructive change happens. Set this up as the "aha" moment._
+_This is the most important part of the demo. You'll launch the workflow against all four nodes and watch it *fail safely* on the two bad candidates — `node3` (insufficient total RAM) and `node4` (RHEL 8). The preflight gate catches them before any destructive change happens. Set this up as the "aha" moment._
 
 Recall the fleet:
 
-* *node1* — RHEL 9.5, sufficient memory → upgrade succeeds
-* *node2* — RHEL 9.7, sufficient memory → upgrade succeeds
-* *node3* — RHEL 9, *< 2 GB free memory* → preflight fails, upgrade aborted
+* *node1* — RHEL 9.5, ~4 GB RAM → upgrade succeeds
+* *node2* — RHEL 9.7, ~4 GB RAM → upgrade succeeds
+* *node3* — RHEL 9, *< 2 GB total RAM (~1.5 GB)* → preflight fails, upgrade aborted
 * *node4* — *RHEL 8* (not RHEL 9) → preflight fails, incompatible OS
 
 === Show
@@ -104,28 +104,35 @@ image::all-nodes.png[Workflow targeting all four nodes,width=600]
 image::wf-start.png[Workflow starting in AAP,width=600]
 
 . Watch the execution in real time. Preflight runs first, and the workflow *fails* on the two bad candidates:
-* *node3* fails during preflight — memory check fails (`ERROR: Insufficient memory. Current: 1.5 GB, Required: 2.0 GB`)
+* *node3* fails during preflight — the total-RAM assertion fails (`The system must have at least 2GB of total RAM for the upgrade. Detected: 1536 MB`)
 +
-image::node3-fail.png[Node 3 failing at preflight due to insufficient memory,width=600]
-* *node4* fails during preflight — OS version check fails (`ERROR: Unsupported operating system. Expected: RHEL 9, Found: RHEL 8`)
+image::node3-fail.png[Node 3 failing at preflight due to insufficient total RAM,width=600]
+* *node4* fails during preflight — the RHEL 9 assertion fails (`This role is intended for RHEL 9 systems only. Detected major version: 8`)
 +
 image::node4-fail.png[Node 4 failing at preflight due to unsupported OS version,width=600]
 
-. Click into the *LEAPP 01: Preflight* job to show the detailed output for each node. Point out messages like:
+. Click into the *LEAPP 01: Preflight* job to show the detailed output for each node. The failures are plain Ansible assertions, and the role's `rescue` block then logs the reason and stops the host. Point out messages like:
 +
 [source]
 ----
-TASK [role-rhel10-upgrader : Perform pre-flight checks for RHEL 10 upgrade] ****
-fatal: [node3]: FAILED! => {"msg": "Preflight check failed: Insufficient free memory", "free_memory_mb": 1536, "required_memory_mb": 2048}
+TASK [role-rhel10-upgrader : Verify system has enough total memory for the upgrade] ***
+fatal: [node3]: FAILED! => {"assertion": "ansible_facts['memtotal_mb'] >= 2048", "evaluated_to": false, "msg": "The system must have at least 2GB of total RAM for the upgrade. Detected: 1536 MB"}
 
-fatal: [node4]: FAILED! => {"msg": "Preflight check failed: OS version not supported", "ansible_distribution": "RedHat", "ansible_distribution_version": "8.0"}
+TASK [role-rhel10-upgrader : Verify system is RHEL 9] ***
+fatal: [node4]: FAILED! => {"assertion": "ansible_facts['distribution_major_version'] == \"9\"", "evaluated_to": false, "msg": "This role is intended for RHEL 9 systems only. Detected major version: 8"}
+
+TASK [role-rhel10-upgrader : Log preflight failure reason] ***
+ok: [node3] => {"msg": "Host node3 did not meet prerequisites for RHEL 10 upgrade. Reason: [Verify system has enough total memory for the upgrade] The system must have at least 2GB of total RAM for the upgrade. Detected: 1536 MB"}
+
+TASK [role-rhel10-upgrader : Fail the host] ***
+fatal: [node3]: FAILED! => {"msg": "Preflight checks failed for node3. See the log above for details."}
 ----
 +
 image::nodes-fail-summary.png[Summary of failed nodes in the workflow,width=600]
 
 **What I say (while the failures show):**
 
-"Look at what just happened. Node3 and node4 *failed* — but read *where* they failed: at preflight. That's the safety gate, the very first phase, *before* the role touches a single package or repository. Node3 was stopped because it doesn't have enough memory to survive the upgrade. Node4 was stopped because it's on RHEL 8, which can't go straight to RHEL 10.
+"Look at what just happened. Node3 and node4 *failed* — but read *where* they failed: at preflight. That's the safety gate, the very first phase, *before* the role touches a single package or repository. Node3 was stopped because it doesn't have the 2 GB of RAM the upgrade needs. Node4 was stopped because it's on RHEL 8, which can't go straight to RHEL 10.
 
 Here's the crucial point: neither of these systems is broken. They're exactly as they were before I hit Launch. The automation refused to put them in a dangerous state. *That* is 'fail safe, not fail late.'"
 
@@ -133,7 +140,7 @@ Here's the crucial point: neither of these systems is broken. They're exactly as
 
 * The failures happen at *preflight* — the first phase — not during the destructive upgrade.
 * The bad candidates are left *untouched and healthy*, not half-upgraded.
-* The error messages are specific and actionable — memory shortfall on node3, wrong OS on node4.
+* The error messages are specific and actionable — a total-RAM shortfall on node3, wrong OS version on node4.
 * Because the steps run in sequence, the destructive Upgrade Execution step *never ran* against node3 and node4.
 
 **Business value callout:**
