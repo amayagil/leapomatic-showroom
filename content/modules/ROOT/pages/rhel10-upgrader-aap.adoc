@@ -41,7 +41,7 @@ _Credentials are never stored in the role or the playbooks. Instead, the RHSM us
 
 . Click *Save*.
 +
-image::rhsm-credential.png[RHSM Credential configuration in AAP,link=self,window=blank,align="center",width=600,title="Storing RHSM credentials securely in an AAP credential"]
+image::rhsm-credential.png[RHSM Credential configuration in AAP,width=600]
 
 [WARNING]
 ====
@@ -96,19 +96,19 @@ Recall the fleet:
 
 . On the next screen, confirm the target nodes are set to `node1,node2,node3,node4`.
 +
-image::all-nodes.png[Workflow targeting all four nodes,link=self,window=blank,align="center",width=600,title="Launching against all four nodes on purpose"]
+image::all-nodes.png[Workflow targeting all four nodes,width=600]
 
 . Click *Next*, then *Launch*.
 +
-image::wf-start.png[Workflow starting in AAP,link=self,window=blank,align="center",width=600,title="The workflow begins executing"]
+image::wf-start.png[Workflow starting in AAP,width=600]
 
 . Watch the execution in real time. Preflight runs first, and the workflow *fails* on the two bad candidates:
 * *node3* fails during preflight — memory check fails (`ERROR: Insufficient memory. Current: 1.5 GB, Required: 2.0 GB`)
 +
-image::node3-fail.png[Node 3 failing at preflight due to insufficient memory,link=self,window=blank,align="center",width=600,title="node3 stopped at preflight — insufficient memory"]
+image::node3-fail.png[Node 3 failing at preflight due to insufficient memory,width=600]
 * *node4* fails during preflight — OS version check fails (`ERROR: Unsupported operating system. Expected: RHEL 9, Found: RHEL 8`)
 +
-image::node4-fail.png[Node 4 failing at preflight due to unsupported OS version,link=self,window=blank,align="center",width=600,title="node4 stopped at preflight — wrong OS version"]
+image::node4-fail.png[Node 4 failing at preflight due to unsupported OS version,width=600]
 
 . Click into the *LEAPP 01: Preflight* job to show the detailed output for each node. Point out messages like:
 +
@@ -120,7 +120,7 @@ fatal: [node3]: FAILED! => {"msg": "Preflight check failed: Insufficient free me
 fatal: [node4]: FAILED! => {"msg": "Preflight check failed: OS version not supported", "ansible_distribution": "RedHat", "ansible_distribution_version": "8.0"}
 ----
 +
-image::nodes-fail-summary.png[Summary of failed nodes in the workflow,link=self,window=blank,align="center",width=600,title="Failure summary — the bad candidates were stopped safely"]
+image::nodes-fail-summary.png[Summary of failed nodes in the workflow,width=600]
 
 **What I say (while the failures show):**
 
@@ -175,11 +175,11 @@ _Now you'll re-run the workflow targeting only `node1` and `node2` — the compa
 * *Inventory:* Demo Inventory
 * *Limit:* enter `node1,node2` to target only those two nodes
 +
-image::node-limit.png[Limiting the workflow to node1 and node2,link=self,window=blank,align="center",width=600,title="Targeting only the compatible nodes"]
+image::node-limit.png[Limiting the workflow to node1 and node2,width=600]
 
 . On the next screen, confirm the target nodes are `node1,node2`.
 +
-image::nodes-selection.png[Node selection for the successful run,link=self,window=blank,align="center",width=600,title="node1 and node2 selected for upgrade"]
+image::nodes-selection.png[Node selection for the successful run,width=600]
 
 . Launch the workflow and narrate as it runs through the five steps in order for each node:
 .. *LEAPP 01: Preflight* — system validation passes
@@ -190,7 +190,7 @@ image::nodes-selection.png[Node selection for the successful run,link=self,windo
 
 . When the run completes, show the successful result.
 +
-image::nodes-success.png[Successful upgrade of node1 and node2,link=self,window=blank,align="center",width=600,title="Both compatible nodes upgraded successfully to RHEL 10"]
+image::nodes-success.png[Successful upgrade of node1 and node2,width=600]
 
 . Click into *LEAPP 04: Upgrade Execution* for node1 to show clean task output such as:
 +

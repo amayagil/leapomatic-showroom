@@ -53,7 +53,7 @@ _In Ansible Automation Platform, the upgrade is exposed as a *workflow template*
 
 . Open the `LEAPP 04: Upgrade Execution` job template and point out that it maps to the role's phases (repositories, update, LEAPP transformation). Show that AAP is configured to pull the role and its dependencies automatically.
 +
-image::aap-job-config.png[AAP job template configured to automatically download the role and its dependencies,link=self,window=blank,align="center",width=600,title="AAP configured to automatically download the role and its dependencies"]
+image::aap-job-config.png[AAP job template configured to automatically download the role and its dependencies,width=600]
 
 **What they should notice:**
 
