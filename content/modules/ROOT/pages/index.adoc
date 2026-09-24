@@ -1,94 +1,47 @@
-= What is Showroom?
-:navtitle: What is Showroom?
+= Leapp-O-Matic: Automated RHEL 10 Upgrades with AAP
+:navtitle: Welcome
 
-Showroom is a web-based lab instruction platform for the https://demo.redhat.com[Red Hat Demo Platform].
-It combines rendered AsciiDoc content with embedded terminals, consoles, and interactive tools -- giving workshop and demo participants everything they need in a single browser tab.
+Welcome to the *Leapp-O-Matic* demo. This is a guided *"Know & Show"* experience: it gives you, the presenter, clear talking points and a step-by-step flow so you can confidently show an associate, customer, or partner how Ansible Automation Platform (AAP) drives safe, automated in-place upgrades from RHEL 9 to RHEL 10.
 
-== What Users See
+The story you are telling is simple and powerful: *major OS upgrades are risky, and Leapp-O-Matic makes them repeatable, validated, and safe.* You will demonstrate how the `role-rhel10-upgrader` role — built on the LEAPP upgrade utility — treats every upgrade as a series of validated phases, stops unsafe upgrades *before* any destructive change, and upgrades compatible systems cleanly end to end.
 
-When a participant opens their Showroom URL they get a split-pane interface:
+[NOTE]
+====
+*Presenter note:* This is a demo, not a hands-on lab. Your goal is to *show and narrate*, not to have the audience perform the steps. The "What I say" blocks give you a ready-made talk track, and the "What I do" blocks tell you exactly which clicks to perform. Adapt the language to your audience, but keep the narrative thread intact: risk → validation → safe outcome.
+====
 
-* **Left pane** -- step-by-step lab instructions rendered from an https://antora.org[Antora] site you author in AsciiDoc.
-* **Right pane** -- one or more tabs such as:
-** A web terminal (SSH to a bastion, containerised CLI tools, or both).
-** The OpenShift web console embedded in an iframe.
-** A VS Code editor (Code Server).
-** A VNC desktop (noVNC).
-** Any external URL you choose.
+== What This Demo Shows
 
-The UI layout, tab names, and tab URLs are all controlled by a simple `ui-config.yml` file that lives in your content repository.
+* How the `role-rhel10-upgrader` role automates a RHEL 9 → RHEL 10 upgrade using LEAPP.
+* How RHSM credentials are managed securely in AAP — never hardcoded.
+* How a single AAP workflow orchestrates the upgrade across a mixed fleet of nodes.
+* Why a workflow targeting under-resourced or incompatible nodes *fails safely* at preflight.
+* Why a workflow targeting compatible nodes upgrades successfully — including automatic RHEL 9.x version normalization.
+* How the upgrade is verified and how post-upgrade tasks such as configuration conflicts are handled.
 
-== How It Gets Deployed
+== Who This Demo Is For
 
-This Ansible collection -- `agnosticd.showroom` -- is the primary way Showroom instances are deployed on the Red Hat Demo Platform.
-Depending on the environment type, you use one of two roles:
+* Infrastructure and platform teams responsible for large RHEL fleets.
+* Customers weighing the effort and risk of moving to RHEL 10.
+* Partners and associates who want to understand the value of automating OS lifecycle with AAP.
 
-[cols="1,3",options="header"]
-|===
-|Role |Use when...
+The audience does *not* need deep Ansible expertise. Keep the message business-first: *predictable, low-risk upgrades at scale.*
 
-|`ocp4_workload_showroom`
-|Your lab runs on an OpenShift 4 cluster.
-The role deploys Showroom as a pod using a Helm chart, complete with content rendering, terminals, and an OpenShift `Route`.
+== What You Will Need Before Presenting
 
-|`vm_workload_showroom`
-|Your lab runs on a VM (RHEL, Fedora, etc.).
-The role deploys Showroom with rootless Podman, Traefik for TLS, and systemd for lifecycle management.
-|===
+* Access to the AAP Controller and the demo environment provided for this session.
+* A valid Red Hat account with subscription entitlements (used to register systems during the demo).
+* Familiarity with the flow below — do a dry run once before presenting live.
 
-Both roles follow the same basic flow:
+== Estimated Time
 
-. Clone your Antora content repository.
-. Inject runtime variables (credentials, hostnames, GUIDs) as AsciiDoc attributes.
-. Render the content to HTML.
-. Serve the content alongside the terminal and tab services you configured.
-. Publish the final URL back to the user.
+Plan for approximately *30–40 minutes*, including time for questions.
 
-== Key Concepts
+== How This Demo Is Organized
 
-Content repository::
-A Git repo containing your AsciiDoc lab instructions, structured as an Antora component.
-You typically fork https://github.com/rhpds/showroom_template_nookbag[showroom_template_nookbag] and add your own pages.
-See xref:content-repo.adoc[].
+. xref:01-overview.adoc[Setting the Scene] — open the demo by framing the business problem and why automated RHEL upgrades matter. *(Delivered live as a talk track — you narrate, no screens yet.)*
+. xref:02-details.adoc[How Leapp-O-Matic Works] — give the customer a live tour of the workflow, the fleet, and the credential model in AAP before you run it. *(Live walk-through in AAP.)*
+. xref:rhel10-upgrader-aap.adoc[The Live Demo] — configure the credential and run the two workflows in AAP. *(Live demo — the main event.)*
+. xref:99-conclusion.adoc[Wrap-Up & Q&A] — recap the value, transition to next steps, and answer questions.
 
-AgnosticV catalog item::
-The YAML configuration in the https://github.com/rhpds/agnosticv[agnosticv] repository that ties your content repo to an environment on the Red Hat Demo Platform.
-See xref:agnosticv-config.adoc[].
-
-User data::
-A set of key-value pairs (hostnames, passwords, URLs) written by infrastructure roles during provisioning and automatically injected into your content as Antora attributes.
-See xref:user-data.adoc[].
-
-UI configuration::
-A `ui-config.yml` file in your content repo that defines the tabs, layout width, and dynamic URLs shown alongside your lab instructions.
-See xref:ui-config.adoc[].
-
-== Where to Start
-
-[cols="1,3",options="header"]
-|===
-|Goal |Page
-
-|Get a Showroom lab running quickly
-|xref:quick-start.adoc[]
-
-|Create or structure a content repo
-|xref:content-repo.adoc[]
-
-|Wire up an AgnosticV catalog item
-|xref:agnosticv-config.adoc[]
-
-|Understand the full architecture
-|xref:architecture.adoc[]
-
-|Contribute to Showroom itself
-|xref:contributing.adoc[]
-|===
-
-== Related Projects
-
-* https://github.com/agnosticd/showroom[agnosticd.showroom collection] -- this Ansible collection (you are here).
-* https://github.com/rhpds/showroom_template_nookbag[showroom_template_nookbag] -- the recommended content repo template.
-* https://github.com/rhpds/showroom-deployer[showroom-deployer] -- Helm charts that power OCP deployments.
-* https://github.com/rhpds/showroom-images[showroom-images] -- container images (content server, terminals, Antora, etc.).
-* https://github.com/rhpds/nookbag[nookbag] -- the zero-touch UI bundle.
+When you are ready, continue to xref:01-overview.adoc[Setting the Scene].

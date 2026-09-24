@@ -1,0 +1,54 @@
+= Wrap-Up & Q&A
+:navtitle: Wrap-Up & Q&A
+
+[NOTE]
+====
+*Presenter note:* Use this module to recap the value, handle the questions you're most likely to get, and point the audience to next steps. Keep the recap short and business-focused — the audience just watched the proof, so remind them what it *means*.
+====
+
+== The story you just told
+
+Congratulations — you've walked your audience through an automated RHEL 9 → RHEL 10 upgrade, driven entirely by Ansible Automation Platform.
+
+The single most important takeaway to reinforce: *the same workflow both refused to break the systems that weren't ready and cleanly upgraded the ones that were.* That combination of safety and automation is what makes fleet-wide upgrades trustworthy.
+
+== Key points to leave them with
+
+* *Preflight is the safety net.* The workflow *failed safely* on `node3` (insufficient memory) and `node4` (RHEL 8, unsupported OS), catching both *before* any destructive change. No half-upgraded, broken systems.
+* *Automated, validated upgrades.* The `role-rhel10-upgrader` role, driven through AAP, upgraded RHEL 9 systems to RHEL 10 with LEAPP — no manual, per-host steps.
+* *Version normalization.* `node1` (RHEL 9.5) and `node2` (RHEL 9.7) upgraded without manual version alignment, because the role normalizes any RHEL 9.x host to RHEL 9.6 during Phase 1.
+* *Secure credential handling.* RHSM credentials lived in an AAP credential and were injected at runtime — never hardcoded in playbooks.
+* *Verified results, responsible cleanup.* The role verified OS version, kernel, and repositories, and surfaced `.rpmnew`/`.rpmsave` config conflicts for human review instead of silently overwriting them.
+
+== Common questions
+
+Q: "How would this work on our fleet of hundreds or thousands of hosts?"::
+A: "The same workflow scales out across your inventory. You can tune parallelism, batch by maintenance window, add approval gates, and integrate notifications. The safety model — validate before you change — is exactly what makes running it at scale realistic."
+
+Q: "What if a host fails preflight in production?"::
+A: "You get a specific, actionable reason — insufficient memory, wrong OS version, an incompatibility LEAPP flagged — before anything destructive happens. You remediate or exclude that host and let the compatible ones proceed. Nothing is left in a broken state."
+
+Q: "Can we upgrade RHEL 8 hosts this way?"::
+A: "Not directly to RHEL 10 — that's why `node4` was stopped. RHEL 8 hosts should be upgraded to RHEL 9 first. The same LEAPP-based, automated approach applies to that hop as well."
+
+Q: "How do we handle the config-file conflicts it reports?"::
+A: "The role hands you the exact list of `.rpmnew`/`.rpmsave` files. A person reviews each one — for example, comparing `/etc/ssh/sshd_config` with its `.rpmnew` — and decides whether to adopt the new defaults. This stays a human decision precisely because auto-applying it could break critical services."
+
+Q: "Is it safe to re-run if something goes wrong?"::
+A: "Yes — the role is idempotent. Re-running on a host that's already RHEL 10 safely skips the upgrade phases, which makes retries and troubleshooting straightforward."
+
+== Next steps to suggest
+
+* Plan a production upgrade strategy applying the "fail safe, not fail late" principle.
+* Review the LEAPP pre-upgrade report format so teams can interpret and act on reported incompatibilities.
+* Extend the workflow to fit the customer's fleet — notifications, approval gates, and scheduling for maintenance windows.
+* Integrate Red Hat Insights to continuously track upgrade readiness across the estate.
+
+== References
+
+* Role repository: https://gitlab.com/ansible-ssa/role-rhel10-upgrader[role-rhel10-upgrader]
+* Upgrading from RHEL 9 to RHEL 10 (LEAPP): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html-single/upgrading_from_rhel_9_to_rhel_10/index[Red Hat documentation]
+* Red Hat Insights: https://docs.redhat.com/en/documentation/red_hat_insights/1-latest[Red Hat Insights documentation]
+* Red Hat Subscription Management: https://docs.redhat.com/en/documentation/subscription_central/1-latest[Subscription Central documentation]
+* RHEL 10 documentation: https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10[Red Hat Enterprise Linux 10]
+* Ansible documentation: https://docs.ansible.com/ansible/latest/[Ansible documentation]

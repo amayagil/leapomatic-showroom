@@ -1,0 +1,345 @@
+= The Live Demo: RHEL 10 Upgrade with AAP
+:navtitle: The Live Demo
+:page-attributes: labname=LEAPP-o-matic-showroom
+
+[NOTE]
+====
+*Presenter note:* This is the heart of the demo. You will configure a credential, then run the workflow *twice* to tell a two-act story:
+
+* *Act 1 (four nodes)* — the workflow *fails safely* on the two bad candidates. This is the moment that sells the "fail safe, not fail late" message. Lean into it.
+* *Act 2 (two nodes)* — the workflow upgrades the two good candidates cleanly, end to end.
+
+Target duration: ~20 minutes. The full upgrade in Act 2 takes time (reboots, LEAPP transformation), so either narrate while it runs or use a pre-run/recorded result if your session is time-boxed. Plan this before you go live.
+====
+
+[#part-1]
+== Part 1 — Configure RHSM credentials in AAP
+
+=== Know
+
+_Credentials are never stored in the role or the playbooks. Instead, the RHSM username and password are held in an AAP *credential* and injected into jobs at runtime. Configuring this credential is the first thing you do, and it's a great opportunity to make the security story concrete for the audience._
+
+*Why it matters:* hardcoded secrets in playbooks are one of the most common — and most dangerous — automation anti-patterns. AAP's credential model keeps secrets out of source control and injects them only when a job runs.
+
+=== Show
+
+**What I say:**
+
+"Before we upgrade anything, we need to tell AAP how to register these systems with Red Hat. That means Red Hat Subscription Manager credentials. Now, a bad way to do this would be to paste a username and password into a playbook. We are *not* going to do that. Instead, we'll store them in an AAP credential — encrypted, kept out of source control, and injected into the job only at runtime. Let me show you."
+
+**What I do:**
+
+. Log in to the *AAP Controller* at the URL provided for your session.
+
+. Navigate to *Credentials* in the left sidebar.
+
+. Open the *RHSM credential*. This is a custom credential type that securely stores your Red Hat username and password for subscription management, created for this demo.
+
+. Enter the details:
+* *Username:* your Red Hat username (the one you use to log into access.redhat.com)
+* *Password:* your Red Hat account password
+
+. Click *Save*.
++
+image::rhsm-credential.png[RHSM Credential configuration in AAP,link=self,window=blank,align="center",width=600,title="Storing RHSM credentials securely in an AAP credential"]
+
+[WARNING]
+====
+Use this moment to reinforce the security point out loud: *never hardcode credentials in playbooks.* Always use AAP credentials and pass them in as variables. The demo is deliberately built this way to model the right pattern.
+====
+
+**What they should notice:**
+
+* The secret lives in AAP, encrypted — not in the role, not in a playbook, not in Git.
+* The same credential can be reused across many jobs and workflows without ever exposing the password.
+
+**Business value callout:**
+
+"This is a small step, but it's the difference between a demo and a *production-ready pattern*. Secrets stay out of your source control and out of your logs, and your automation is auditable. Your security team will thank you."
+
+**If asked:**
+
+Q: "What credential type is this?"::
+A: "It's a custom credential type defined for this scenario that maps the Red Hat username and password into the variables the registration role expects. AAP lets you define custom credential types so secrets are injected exactly where automation needs them, without ever being written into playbooks."
+
+'''
+
+[#part-2]
+== Part 2 — Act 1: Run the workflow on four nodes (the safe failure)
+
+=== Know
+
+_This is the most important part of the demo. You'll launch the workflow against all four nodes and watch it *fail safely* on the two bad candidates — `node3` (insufficient memory) and `node4` (RHEL 8). The preflight gate catches them before any destructive change happens. Set this up as the "aha" moment._
+
+Recall the fleet:
+
+* *node1* — RHEL 9.5, sufficient memory → upgrade succeeds
+* *node2* — RHEL 9.7, sufficient memory → upgrade succeeds
+* *node3* — RHEL 9, *< 2 GB free memory* → preflight fails, upgrade aborted
+* *node4* — *RHEL 8* (not RHEL 9) → preflight fails, incompatible OS
+
+=== Show
+
+**What I say:**
+
+"Now the fun part. I'm going to launch the upgrade workflow against *all four* nodes at once — including the two we know are bad candidates. I'm doing this on purpose. I want you to see what happens when you point automation at systems that shouldn't be upgraded. In a manual world, this is where things go wrong. Let's see what Leapp-O-Matic does instead."
+
+**What I do:**
+
+. Navigate to *Templates* → *Workflow Templates* and choose `WORKFLOW: Leapp-O-Matic RHEL 10 Migration`.
+
+. Click *Launch*.
+
+. When prompted for inventory, confirm:
+* *Inventory:* Demo Inventory
+* *Limit:* leave blank to target all nodes in the inventory
+
+. On the next screen, confirm the target nodes are set to `node1,node2,node3,node4`.
++
+image::all-nodes.png[Workflow targeting all four nodes,link=self,window=blank,align="center",width=600,title="Launching against all four nodes on purpose"]
+
+. Click *Next*, then *Launch*.
++
+image::wf-start.png[Workflow starting in AAP,link=self,window=blank,align="center",width=600,title="The workflow begins executing"]
+
+. Watch the execution in real time. Preflight runs first, and the workflow *fails* on the two bad candidates:
+* *node3* fails during preflight — memory check fails (`ERROR: Insufficient memory. Current: 1.5 GB, Required: 2.0 GB`)
++
+image::node3-fail.png[Node 3 failing at preflight due to insufficient memory,link=self,window=blank,align="center",width=600,title="node3 stopped at preflight — insufficient memory"]
+* *node4* fails during preflight — OS version check fails (`ERROR: Unsupported operating system. Expected: RHEL 9, Found: RHEL 8`)
++
+image::node4-fail.png[Node 4 failing at preflight due to unsupported OS version,link=self,window=blank,align="center",width=600,title="node4 stopped at preflight — wrong OS version"]
+
+. Click into the *LEAPP 01: Preflight* job to show the detailed output for each node. Point out messages like:
++
+[source]
+----
+TASK [role-rhel10-upgrader : Perform pre-flight checks for RHEL 10 upgrade] ****
+fatal: [node3]: FAILED! => {"msg": "Preflight check failed: Insufficient free memory", "free_memory_mb": 1536, "required_memory_mb": 2048}
+
+fatal: [node4]: FAILED! => {"msg": "Preflight check failed: OS version not supported", "ansible_distribution": "RedHat", "ansible_distribution_version": "8.0"}
+----
++
+image::nodes-fail-summary.png[Summary of failed nodes in the workflow,link=self,window=blank,align="center",width=600,title="Failure summary — the bad candidates were stopped safely"]
+
+**What I say (while the failures show):**
+
+"Look at what just happened. Node3 and node4 *failed* — but read *where* they failed: at preflight. That's the safety gate, the very first phase, *before* the role touches a single package or repository. Node3 was stopped because it doesn't have enough memory to survive the upgrade. Node4 was stopped because it's on RHEL 8, which can't go straight to RHEL 10.
+
+Here's the crucial point: neither of these systems is broken. They're exactly as they were before I hit Launch. The automation refused to put them in a dangerous state. *That* is 'fail safe, not fail late.'"
+
+**What they should notice:**
+
+* The failures happen at *preflight* — the first phase — not during the destructive upgrade.
+* The bad candidates are left *untouched and healthy*, not half-upgraded.
+* The error messages are specific and actionable — memory shortfall on node3, wrong OS on node4.
+* Because the steps run in sequence, the destructive Upgrade Execution step *never ran* against node3 and node4.
+
+**Business value callout:**
+
+"Imagine this at fleet scale. Instead of discovering at 2 a.m. that a memory-starved host bricked itself halfway through an upgrade, the automation told you *up front*, before any risk, exactly which hosts aren't ready and why. That's the difference between an upgrade you dread and one you can schedule with confidence."
+
+**If asked:**
+
+Q: "So the whole workflow failed?"::
+A: "The workflow reported failures for the two bad nodes, but the *good* nodes were validated fine. The point of this run is to show the safety behavior. In practice you'd remediate or exclude the bad hosts — which is exactly what we do next, by targeting only the compatible nodes."
+
+Q: "Could node1 and node2 have been upgraded in this same run?"::
+A: "They pass preflight, yes. For the demo we deliberately re-run against just the good nodes so we can watch a clean, uninterrupted success. In production you'd typically resolve or exclude the failing hosts and let the compatible ones proceed."
+
+Q: "What if I want the workflow to keep going for the healthy hosts even when some fail?"::
+A: "AAP workflows are flexible — you can configure convergence and failure behavior per node. This demo keeps it simple and sequential so the safety story is crystal clear."
+
+'''
+
+[#part-3]
+== Part 3 — Act 2: Run the workflow on two nodes (the clean success)
+
+=== Know
+
+_Now you'll re-run the workflow targeting only `node1` and `node2` — the compatible nodes — and watch them upgrade cleanly to RHEL 10. This is where you show the payoff: hands-off, validated, end-to-end upgrades, including automatic version normalization from different RHEL 9 minor versions._
+
+=== Show
+
+**What I say:**
+
+"Now let's point the same workflow at just our two good candidates — node1 and node2 — and watch it do the whole job, end to end, hands off. Remember, these two are on *different* minor versions, 9.5 and 9.7. Watch how the role handles that automatically."
+
+**What I do:**
+
+. Navigate to *Templates* → *Workflow Templates* and choose `WORKFLOW: Leapp-O-Matic RHEL 10 Migration`.
+
+. Click *Launch*.
+
+. When prompted for inventory, confirm:
+* *Inventory:* Demo Inventory
+* *Limit:* enter `node1,node2` to target only those two nodes
++
+image::node-limit.png[Limiting the workflow to node1 and node2,link=self,window=blank,align="center",width=600,title="Targeting only the compatible nodes"]
+
+. On the next screen, confirm the target nodes are `node1,node2`.
++
+image::nodes-selection.png[Node selection for the successful run,link=self,window=blank,align="center",width=600,title="node1 and node2 selected for upgrade"]
+
+. Launch the workflow and narrate as it runs through the five steps in order for each node:
+.. *LEAPP 01: Preflight* — system validation passes
+.. *LEAPP 02: RHSM Registration* — the node registers with Red Hat Subscription Manager
+.. *LEAPP 03: Insights Registration* — the node registers with Red Hat Insights
+.. *LEAPP 04: Upgrade Execution* — the role runs its phases in sequence: repositories configured, system updated to the latest RHEL 9.x and rebooted, LEAPP pre-upgrade analysis run and reviewed, then the final transformation to RHEL 10 and a reboot into RHEL 10
+.. *LEAPP 05: Post-Upgrade Verification* — validates RHEL 10 OS version, kernel, GPG keys, and services, and cleans up upgrade artifacts
+
+. When the run completes, show the successful result.
++
+image::nodes-success.png[Successful upgrade of node1 and node2,link=self,window=blank,align="center",width=600,title="Both compatible nodes upgraded successfully to RHEL 10"]
+
+. Click into *LEAPP 04: Upgrade Execution* for node1 to show clean task output such as:
++
+[source]
+----
+TASK [role-rhel10-upgrader : Perform pre-flight checks] ****
+ok: [node1] => {"preflight_status": "passed", "free_memory_mb": 2560}
+
+TASK [role-rhel10-upgrader : Configure repositories and lock release version] ****
+ok: [node1] => {"changed": true, "repositories_configured": true}
+
+TASK [role-rhel10-upgrader : Update all packages to the latest available versions] ****
+ok: [node1] => {"changed": true, "packages_updated": 156}
+
+TASK [role-rhel10-upgrader : Perform the RHEL 10 upgrade] ****
+ok: [node1] => {"leapp_status": "transformation_complete", "rebooted": true}
+
+TASK [role-rhel10-upgrader : Perform the RHEL 10 post upgrade] ****
+ok: [node1] => {"os_version": "10.0", "kernel_el10": true, "python_reset": true, "services_healthy": true}
+----
+
+**What I say (during the run):**
+
+"Notice what I did *not* have to do. I didn't manually align node1 and node2 to the same minor version first. During the repositories phase, the role normalizes *any* RHEL 9.x host — 9.5, 9.7, whatever — to a common RHEL 9.6 baseline before upgrading to RHEL 10. That mixed-version mess I described at the start? The role just absorbs it.
+
+And at the end, the role doesn't just say 'done.' It *verifies*: it confirms the OS is really RHEL 10, checks the kernel, resets the Python interpreter, validates repositories and GPG keys, and makes sure critical services are healthy. You get a system that's not just upgraded, but *confirmed* upgraded."
+
+**What they should notice:**
+
+* Both nodes upgrade successfully *despite* starting on different minor versions — automatic version normalization at work.
+* The upgrade is fully hands-off — no manual per-host steps between launch and a verified RHEL 10 system.
+* The role *verifies* the result rather than assuming success.
+* Running serially gives clean, predictable, per-node reporting.
+
+**Business value callout:**
+
+"This is the payoff. Two systems, different starting points, upgraded to RHEL 10 and verified — with a single workflow launch and zero manual host-by-host work. Scale that to hundreds of hosts and you've turned a multi-week, high-anxiety project into a repeatable, schedulable operation."
+
+**If asked:**
+
+Q: "Do I need every host on the same RHEL 9 minor version first?"::
+A: "No — and that's a key design point. The role normalizes any RHEL 9.x (9.5, 9.6, 9.7, …) to RHEL 9.6 as the intermediate target during the repositories phase. No manual pre-upgrade version alignment needed."
+
+Q: "Why run serially instead of all at once?"::
+A: "Serial execution gives predictable behavior, clean error reporting, and the ability to catch a problem on one host before moving to the next. For very large fleets you can tune parallelism, but for a clear demo — and for cautious production rollouts — serial is easy to reason about."
+
+Q: "Is the role idempotent? What if I re-run it?"::
+A: "Yes. Re-running on a host that's already RHEL 10 is safe — it skips the upgrade phases. That makes retries and troubleshooting straightforward."
+
+'''
+
+[#part-4]
+== Part 4 — Verify the upgrade and handle post-upgrade tasks
+
+=== Know
+
+_To close the loop, show that the upgraded nodes really are on RHEL 10 and walk through the post-upgrade housekeeping the role surfaces — most importantly, configuration-file conflicts (`.rpmnew` / `.rpmsave`) that a responsible upgrade never auto-applies._
+
+=== Show
+
+**What I say:**
+
+"Let's prove it. I'll SSH into one of the upgraded nodes and confirm it's genuinely RHEL 10 — and then show you the one thing the role deliberately does *not* do automatically, because doing it automatically would be dangerous."
+
+**What I do:**
+
+. Confirm the OS version, kernel, and system state on an upgraded node:
++
+[source,bash]
+----
+ssh node1
+cat /etc/os-release | grep VERSION_ID
+uname -r
+sudo systemctl is-system-running
+----
++
+Expected output:
++
+[source]
+----
+VERSION_ID="10.0"
+6.11.x-x el10 (or similar RHEL 10 kernel version)
+running
+----
+
+. Review configuration conflicts. The role reports any `.rpmnew` / `.rpmsave` files in `/root/upgrade_report.txt`:
++
+[source,bash]
+----
+ssh node1
+sudo cat /root/upgrade_report.txt
+sudo find /etc -name "*.rpmnew" -o -name "*.rpmsave"
+----
+
+. Confirm the RHEL 10 repositories are enabled:
++
+[source,bash]
+----
+ssh node1
+sudo subscription-manager repos --list-enabled | grep rhel-10
+----
++
+Expected output:
++
+[source]
+----
+Repo ID: rhel-10-for-x86_64-baseos-rpms
+Repo ID: rhel-10-for-x86_64-appstream-rpms
+----
+
+**What I say (on config conflicts):**
+
+"Here's an important detail. When RPM updates a package whose config file you've customized, it doesn't silently overwrite your changes — it drops a `.rpmnew` file next to your config so *you* can decide what to keep. The role finds these and *reports* them, but it never auto-applies them. Blindly adopting new defaults for something like `sshd_config` could lock you out of a box. So this stays a deliberate, human decision — and the role hands you the exact list."
+
+**What they should notice:**
+
+* The upgraded node genuinely reports `VERSION_ID="10.0"` and an el10 kernel — verifiable proof, not a claim.
+* RHEL 10 repositories are enabled and correct.
+* Config conflicts are *surfaced for review*, not auto-applied — a safety-first design choice.
+
+**Business value callout:**
+
+"Even the cleanup is done responsibly. The upgrade is verified, and anything that genuinely needs a human decision — like a customized config file — is handed to you as a clear list instead of being silently overwritten. That's the kind of care that makes teams trust automation with their production fleet."
+
+**If asked:**
+
+Q: "What about the Python interpreter — I heard RHEL 10 changes that?"::
+A: "Right — RHEL 10 no longer ships the old Python 3.9 path. The role's post-upgrade phase resets the interpreter to `/usr/bin/python3` automatically, so you won't trip over it. If you see a 'Python 3.9 not found' message in the logs, that's expected and confirms the role handled it."
+
+Q: "We run RHEL on cloud images — anything different?"::
+A: "On AWS/Azure/GCP RHEL images you may see a non-blocking note about stale RHUI repository files. The role reports it and continues; you permanently resolve it by re-registering the host for RHEL 10 content. On-prem hosts aren't affected."
+
+'''
+
+[#summary]
+== Demo summary
+
+=== What we demonstrated
+
+In this demo you showed how Leapp-O-Matic turns a high-risk manual chore into a safe, repeatable operation:
+
+. *Secure credentials* — RHSM credentials configured in AAP and injected at runtime, never hardcoded.
+. *Fail safe, not fail late* — the four-node run stopped `node3` (insufficient memory) and `node4` (RHEL 8) at preflight, leaving them untouched and healthy.
+. *Clean, hands-off upgrade* — the two-node run upgraded `node1` (9.5) and `node2` (9.7) to RHEL 10 end to end, absorbing the minor-version difference through automatic normalization.
+. *Verified results and responsible cleanup* — the role confirmed OS version, kernel, repositories, and services, and surfaced config conflicts for human review instead of overwriting them.
+
+=== Presenter transition
+
+[NOTE]
+====
+*Presenter tip:* Land the plane on the contrast you just showed: "You saw the same workflow do two things — *refuse* to break the systems that weren't ready, and *cleanly upgrade* the ones that were. Safety and automation, together. That's what makes a fleet-wide RHEL 10 migration something you can actually plan." Then move to xref:99-conclusion.adoc[Wrap-Up & Q&A].
+====

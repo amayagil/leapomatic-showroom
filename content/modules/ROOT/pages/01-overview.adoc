@@ -1,0 +1,93 @@
+= Setting the Scene
+:navtitle: Setting the Scene
+
+[NOTE]
+====
+*Presenter note:* This is the opening of your *live demo* — the segment where you set up the problem before you switch over to AAP. There are no screens to click yet; you deliver this part as a talk track, narrating directly to the customer. Don't rush it. This is where you make the audience *feel* the pain of manual OS upgrades so the automated solution you're about to show lands with real impact. Spend about 5 minutes, then move to the AAP walk-through.
+====
+
+[#part-1]
+== Part 1 — Why automated RHEL upgrades matter
+
+=== Know
+
+_Major operating system upgrades are among the highest-risk changes an organization performs. Moving from RHEL 9 to RHEL 10 touches the kernel, the package set, the Python interpreter, and countless configuration files. Done manually, at scale, this work is slow, error-prone, and inconsistent from host to host._
+
+*Business challenge:*
+
+* *Fleet drift* — hosts sit on different RHEL 9 minor versions (9.5, 9.6, 9.7), each needing different handling.
+* *Silent incompatibilities* — deprecated packages or unsupported configurations can turn an upgrade into an outage.
+* *Under-resourced systems* — a host without enough free memory can fail partway through, leaving it in a broken state.
+* *Human error* — manual steps skipped or run out of order lead to systems that "upgraded" but don't actually work.
+
+*Value proposition:*
+
+Automation makes upgrades *repeatable, validated, and safe*. The same tested process runs against every host, checks are enforced before any destructive action, and results are consistent and auditable. This is the foundation of everything you are about to demonstrate.
+
+=== Show
+
+[NOTE]
+====
+*Presenter note:* This part is a talk track — you are narrating, not clicking. Use the talking points below to establish the business problem before you open AAP. The goal is tension: the audience should be nodding along, recognizing their own environment, by the time you say "let me show you a better way."
+====
+
+**What I say:**
+
+"Before I show you any tooling, let me set the stage with a problem I think many of you will recognize. You have a fleet of RHEL servers, and it's time to move to RHEL 10. Sounds simple. But a major OS upgrade touches the kernel, the entire package set, the Python interpreter, and configuration files all over the system. It is one of the riskiest changes you can make.
+
+Now multiply that by hundreds or thousands of hosts. Some are on RHEL 9.5, some on 9.7 — they've drifted apart over time. A few are short on memory. One or two might not even be on RHEL 9 at all. Do this by hand and you get inconsistent results, silent incompatibilities that turn into outages, and the occasional host left half-upgraded and broken. That last one is the nightmare scenario: a system that is neither the old version nor the new version, and now you're doing recovery at 2 a.m.
+
+The answer is automation — but not just 'run the upgrade command everywhere.' The answer is *validated* automation: the same tested process on every host, with safety checks enforced *before* anything destructive happens. That's exactly what I'm going to show you today, live, on a real fleet."
+
+**Business value callout:**
+
+"The value here isn't just saving time, though you'll save plenty. It's *de-risking* one of the scariest changes in the data center. Predictable, validated, auditable upgrades mean you can actually plan a fleet-wide migration with confidence instead of hoping for the best."
+
+**If asked:**
+
+Q: "Can't we just use LEAPP directly?"::
+A: "You can, and what I'm about to show uses LEAPP under the hood. What automation adds on top is orchestration across the whole fleet, enforced safety gates before destructive steps, secure credential handling, and consistent, auditable results — all driven from AAP instead of host-by-host by hand."
+
+Q: "How risky is a RHEL 9 to RHEL 10 in-place upgrade really?"::
+A: "In-place upgrades are supported and well-understood, but the risk comes from scale and variability — mixed minor versions, under-resourced hosts, and incompatible configurations. What I'll demonstrate is that the tooling catches those problems *before* the point of no return, so a bad candidate never ends up half-upgraded."
+
+'''
+
+[#part-2]
+== Part 2 — What Leapp-O-Matic does
+
+=== Know
+
+_*Leapp-O-Matic* is the friendly name for the `role-rhel10-upgrader` Ansible role, driven through Ansible Automation Platform. It automates the full RHEL 9 → RHEL 10 journey and, critically, uses LEAPP's pre-upgrade analysis as a *gatekeeper*: it inspects the system before committing to the upgrade and refuses to proceed when the system isn't safe._
+
+*The guiding principle:* _fail safe, not fail late._ Incompatible or under-resourced systems are caught during preflight — before the point of no return — so a bad candidate never ends up half-upgraded.
+
+=== Show
+
+[NOTE]
+====
+*Presenter note:* Still a talk track, but this is your bridge into the live demo. End this part by promising the audience exactly what they're about to watch on screen, so the AAP walk-through feels like the natural next beat.
+====
+
+**What I say:**
+
+"The solution I'm demonstrating is called Leapp-O-Matic. Under the friendly name is an Ansible role — `role-rhel10-upgrader` — driven through Ansible Automation Platform. It automates the entire RHEL 9 to RHEL 10 journey.
+
+But here's the part that matters most, and it's the theme I want you to hold onto for the rest of the demo: Leapp-O-Matic does *not* upgrade blindly. It uses LEAPP's pre-upgrade analysis as a gatekeeper. It inspects each system first, and if the system isn't safe to upgrade, it stops — before making a single destructive change.
+
+We call this principle 'fail safe, not fail late.' A bad candidate gets caught at the front door, during preflight, not halfway through the upgrade when it's already too late to turn back.
+
+In a moment I'll open AAP and show you exactly how this is put together — and then we'll run it live against a deliberately messy fleet, so you can see both the safety net and a clean upgrade with your own eyes."
+
+**What they should notice (preview of the demo):**
+
+* Every upgrade is broken into *validated phases*, and each phase must pass before the next runs.
+* The *preflight* phase is the safety gate — it checks OS version, memory, and disk before anything destructive happens.
+* Because the steps run in sequence, a failure early on *stops the destructive steps from ever running* against that host.
+* Compatible hosts on *different* RHEL 9 minor versions still upgrade cleanly, thanks to automatic version normalization.
+
+**Business value callout:**
+
+"By the end of this demo you will have seen two things that usually don't go together: an upgrade that *refuses to run* on the systems that would have broken, and a clean, hands-off upgrade on the systems that were ready. That combination — safety *and* automation — is what makes fleet-wide upgrades trustworthy."
+
+Continue to xref:02-details.adoc[How Leapp-O-Matic Works] to walk the customer through the setup in AAP before you run it.
