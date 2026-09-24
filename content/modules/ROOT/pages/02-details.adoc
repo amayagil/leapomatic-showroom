@@ -112,8 +112,8 @@ _The demo runs against a small inventory of four RHEL nodes, deliberately config
 . Navigate to *Resources* → *Inventories* → *Demo Inventory* and open the *Hosts* tab to show the four nodes.
 
 . Walk the customer through what makes each node different, setting up the outcomes they'll see later:
-* "`node1` and `node2` are our good candidates — but notice they're on *different* minor versions, 9.5 and 9.7. That's on purpose, so you can watch the role handle mixed versions automatically."
-* "`node3` is on RHEL 9 but starved for memory — under 2 GB free. `node4` isn't even on RHEL 9; it's still on RHEL 8, which can't go straight to RHEL 10 at all. Keep these two in mind — they're the reason we'll see the safety net kick in."
+* " `node1` and `node2` are our good candidates — but notice they're on *different* minor versions, 9.5 and 9.7. That's on purpose, so you can watch the role handle mixed versions automatically."
+* " `node3` is on RHEL 9 but starved for memory — under 2 GB free. `node4` isn't even on RHEL 9; it's still on RHEL 8, which can't go straight to RHEL 10 at all. Keep these two in mind — they're the reason we'll see the safety net kick in."
 
 **What they should notice:**
 
@@ -156,7 +156,7 @@ The role's work is organized into sequential phases. Each phase must succeed bef
 
 [NOTE]
 ====
-*Presenter note:* This part is a short talk track to explain the "brains" of the role. You don't need a screen for it — a whiteboard gesture or pointing back at the workflow visualizer works. The payoff is that the customer understands *why* the upcoming failures are a feature, not a bug.
+*Presenter note:* This part is a short talk track to explain the "brains" of the role. For a business audience, a whiteboard gesture or pointing back at the workflow visualizer is enough. For a *technical* audience, take the optional step below and open the role's source code — showing the actual preflight and gatekeeper logic makes "this is a feature, not a bug" concrete and builds credibility with engineers in the room. The payoff either way: the customer understands *why* the upcoming failures are intentional.
 ====
 
 **What I say:**
@@ -166,6 +166,21 @@ The role's work is organized into sequential phases. Each phase must succeed bef
 Then it sets up repositories and normalizes the host to a common RHEL 9.6 baseline, updates and reboots, and runs the LEAPP analysis and the actual transformation to RHEL 10. Afterward it verifies everything — OS version, kernel, repositories, GPG keys, services — and cleans up after itself.
 
 The key idea: LEAPP's own report is used as a *gatekeeper*. The role reads it and *decides* whether it's safe to continue, rather than just barreling ahead. Keep that in mind, because in the very next run you're going to watch it decide *not* to continue — on purpose."
+
+**What I do _(optional — for a technical audience)_:**
+
+. Open the role's source repository in a browser tab: https://gitlab.com/ansible-ssa/role-rhel10-upgrader[role-rhel10-upgrader on GitLab^]
+
+. Show the *preflight* tasks — the checks that gate the whole upgrade (supported OS version, free memory, disk space):
+* "This is the safety gate in code. It's just an Ansible task that asserts the host meets the requirements. If any assertion fails, the play stops here — and because the workflow runs sequentially, the destructive steps never fire."
+
+. Show where the role *parses LEAPP's JSON report* and decides whether to proceed:
+* "And here's the gatekeeper. The role doesn't just run LEAPP and hope — it reads LEAPP's own report and makes a decision. That's the difference between automation that's fast and automation you can trust."
+
+[TIP]
+====
+*Presenter tip:* Don't line-by-line the code. Open the repo, scroll to the preflight and report-parsing tasks, and let the customer *see* that the safety behavior is real, versioned, and reviewable — then move on. Two screens, thirty seconds.
+====
 
 **What they should notice:**
 
@@ -180,5 +195,8 @@ A: "No — that's a deliberate design point. During the repositories phase the r
 
 Q: "Where do the credentials live?"::
 A: "Never in the role or the playbooks. The RHSM username and password are held in an AAP credential and injected at runtime — which is the first thing I'll configure when we move into the live run."
+
+Q: "Can we review the role's code ourselves?"::
+A: "Absolutely — it's all open and versioned at https://gitlab.com/ansible-ssa/role-rhel10-upgrader[gitlab.com/ansible-ssa/role-rhel10-upgrader^]. The preflight checks and the LEAPP report parsing are right there in the tasks, so your engineers can audit exactly how the safety decisions are made."
 
 With the setup clear, continue to xref:rhel10-upgrader-aap.adoc[The Live Demo] to configure the credential and run the two workflows.
