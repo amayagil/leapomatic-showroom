@@ -200,25 +200,42 @@ image::nodes-selection.png[Node selection for the successful run,width=600]
 +
 image::nodes-success.png[Successful upgrade of node1 and node2,width=600]
 
-. Click into *LEAPP 04: Upgrade Execution* for node1 to show clean task output such as:
+. Click into *LEAPP 04: Upgrade Execution* for node1 to show clean task output. The role runs its phases in order — repositories, package update, then the LEAPP pre-upgrade analysis and the upgrade itself:
 +
 [source]
 ----
-TASK [role-rhel10-upgrader : Perform pre-flight checks] ****
-ok: [node1] => {"preflight_status": "passed", "free_memory_mb": 2560}
+TASK [role-rhel10-upgrader : Install python3-dnf-plugin-versionlock] ****
+changed: [node1]
 
-TASK [role-rhel10-upgrader : Configure repositories and lock release version] ****
-ok: [node1] => {"changed": true, "repositories_configured": true}
+TASK [role-rhel10-upgrader : Lock the release version to 9.6] ****
+changed: [node1]
 
 TASK [role-rhel10-upgrader : Update all packages to the latest available versions] ****
-ok: [node1] => {"changed": true, "packages_updated": 156}
+changed: [node1]
 
-TASK [role-rhel10-upgrader : Perform the RHEL 10 upgrade] ****
-ok: [node1] => {"leapp_status": "transformation_complete", "rebooted": true}
+TASK [role-rhel10-upgrader : Install the LEAPP upgrade tooling] ****
+changed: [node1]
 
-TASK [role-rhel10-upgrader : Perform the RHEL 10 post upgrade] ****
-ok: [node1] => {"os_version": "10.0", "kernel_el10": true, "python_reset": true, "services_healthy": true}
+TASK [role-rhel10-upgrader : Running pre-upgrade checks with LEAPP] ****
+changed: [node1]
+
+TASK [role-rhel10-upgrader : Fetch pre-upgrade report] ****
+ok: [node1]
+
+TASK [role-rhel10-upgrader : Fail if pre-upgrade checks did not pass] ****
+skipping: [node1]
+
+TASK [role-rhel10-upgrader : Running the RHEL 10 upgrade with LEAPP] ****
+changed: [node1]
+
+TASK [role-rhel10-upgrader : Reboot the system to complete the upgrade] ****
+changed: [node1]
 ----
++
+[NOTE]
+====
+The `Fail if pre-upgrade checks did not pass` task is *skipped* here because LEAPP's pre-upgrade analysis returned success (`rc == 0`). On a host where LEAPP flags a blocker, that task fires and stops the upgrade before the destructive `leapp upgrade` step ever runs — the same "fail safe" gate, enforced by LEAPP itself.
+====
 
 **What I say (during the run):**
 
@@ -341,7 +358,7 @@ A: "On AWS/Azure/GCP RHEL images you may see a non-blocking note about stale RHU
 In this demo you showed how Leapp-O-Matic turns a high-risk manual chore into a safe, repeatable operation:
 
 . *Secure credentials* — RHSM credentials configured in AAP and injected at runtime, never hardcoded.
-. *Fail safe, not fail late* — the four-node run stopped `node3` (insufficient memory) and `node4` (RHEL 8) at preflight, leaving them untouched and healthy.
+. *Fail safe, not fail late* — the four-node run stopped `node3` (insufficient total RAM) and `node4` (RHEL 8) at preflight, leaving them untouched and healthy.
 . *Clean, hands-off upgrade* — the two-node run upgraded `node1` (9.5) and `node2` (9.7) to RHEL 10 end to end, absorbing the minor-version difference through automatic normalization.
 . *Verified results and responsible cleanup* — the role confirmed OS version, kernel, repositories, and services, and surfaced config conflicts for human review instead of overwriting them.
 

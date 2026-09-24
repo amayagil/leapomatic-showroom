@@ -51,6 +51,8 @@ _In Ansible Automation Platform, the upgrade is exposed as a *workflow template*
 
 . Open the workflow *Visualizer* and walk the customer through the five chained steps, left to right: *Preflight → RHSM Registration → Insights Registration → Upgrade Execution → Post-Upgrade Verification*.
 * "Notice these run *in sequence*. That ordering is the whole safety story: preflight comes first, and if it fails, the destructive Upgrade Execution step never runs against that host."
++
+image::wf-start.png[The five workflow steps chained in sequence in the AAP Visualizer,width=600]
 
 . Open the `LEAPP 04: Upgrade Execution` job template and point out that it maps to the role's phases (repositories, update, LEAPP transformation). Show that AAP is configured to pull the role and its dependencies automatically.
 +
@@ -109,7 +111,9 @@ _The demo runs against a small inventory of four RHEL nodes, deliberately config
 
 **What I do:**
 
-. Navigate to *Resources* → *Inventories* → *Demo Inventory* and open the *Hosts* tab to show the four nodes.
+. Navigate to *Resources* → *Inventories* → *Demo Inventory* and open the *Hosts* tab to show the four nodes. (You'll also see all four listed as targetable hosts when you launch the workflow.)
++
+image::all-nodes.png[The four demo nodes — node1, node2, node3, node4,width=600]
 
 . Walk the customer through what makes each node different, setting up the outcomes they'll see later:
 * " `node1` and `node2` are our good candidates — but notice they're on *different* minor versions, 9.5 and 9.7. That's on purpose, so you can watch the role handle mixed versions automatically."

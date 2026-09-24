@@ -14,9 +14,9 @@ The single most important takeaway to reinforce: *the same workflow both refused
 
 == Key points to leave them with
 
-* *Preflight is the safety net.* The workflow *failed safely* on `node3` (insufficient memory) and `node4` (RHEL 8, unsupported OS), catching both *before* any destructive change. No half-upgraded, broken systems.
+* *Preflight is the safety net.* The workflow *failed safely* on `node3` (insufficient total RAM — under the 2 GB minimum) and `node4` (RHEL 8, unsupported OS), catching both *before* any destructive change. No half-upgraded, broken systems.
 * *Automated, validated upgrades.* The `role-rhel10-upgrader` role, driven through AAP, upgraded RHEL 9 systems to RHEL 10 with LEAPP — no manual, per-host steps.
-* *Version normalization.* `node1` (RHEL 9.5) and `node2` (RHEL 9.7) upgraded without manual version alignment, because the role normalizes any RHEL 9.x host to RHEL 9.6 during Phase 1.
+* *Version normalization.* `node1` (RHEL 9.5) and `node2` (RHEL 9.7) upgraded without manual version alignment, because the role normalizes any RHEL 9.x host to RHEL 9.6 during the repositories phase.
 * *Secure credential handling.* RHSM credentials lived in an AAP credential and were injected at runtime — never hardcoded in playbooks.
 * *Verified results, responsible cleanup.* The role verified OS version, kernel, and repositories, and surfaced `.rpmnew`/`.rpmsave` config conflicts for human review instead of silently overwriting them.
 
@@ -26,7 +26,7 @@ Q: "How would this work on our fleet of hundreds or thousands of hosts?"::
 A: "The same workflow scales out across your inventory. You can tune parallelism, batch by maintenance window, add approval gates, and integrate notifications. The safety model — validate before you change — is exactly what makes running it at scale realistic."
 
 Q: "What if a host fails preflight in production?"::
-A: "You get a specific, actionable reason — insufficient memory, wrong OS version, an incompatibility LEAPP flagged — before anything destructive happens. You remediate or exclude that host and let the compatible ones proceed. Nothing is left in a broken state."
+A: "You get a specific, actionable reason — insufficient total RAM, a missing CPU feature, wrong OS version, an incompatibility LEAPP flagged — before anything destructive happens. You remediate or exclude that host and let the compatible ones proceed. Nothing is left in a broken state."
 
 Q: "Can we upgrade RHEL 8 hosts this way?"::
 A: "Not directly to RHEL 10 — that's why `node4` was stopped. RHEL 8 hosts should be upgraded to RHEL 9 first. The same LEAPP-based, automated approach applies to that hop as well."
