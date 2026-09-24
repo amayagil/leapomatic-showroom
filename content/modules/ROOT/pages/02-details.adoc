@@ -1,5 +1,6 @@
 = How Leapp-O-Matic Works
 :navtitle: How It Works
+:imagesdir: ../assets/images
 
 [NOTE]
 ====

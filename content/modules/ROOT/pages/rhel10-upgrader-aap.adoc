@@ -1,6 +1,7 @@
 = The Live Demo: RHEL 10 Upgrade with AAP
 :navtitle: The Live Demo
 :page-attributes: labname=LEAPP-o-matic-showroom
+:imagesdir: ../assets/images
 
 [NOTE]
 ====
